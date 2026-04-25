@@ -89,3 +89,18 @@ task uninstall(dependsOn: [uninstallCurrent, uninstallDeps]) {
         println "✅ Uninstall sequence complete"
     }
 }
+
+// Task to completely delete the build folder (including .git dirs)
+task cleanBuildDir {
+    doLast {
+        def buildDirFile = file("${buildDir}")
+        if (buildDirFile.exists()) {
+            println "Deleting build directory: ${buildDirFile}"
+            // Use Gradle's built-in delete to recursively remove everything
+            delete buildDirFile
+        } else {
+            println "Build directory does not exist, nothing to delete."
+        }
+    }
+}
+
