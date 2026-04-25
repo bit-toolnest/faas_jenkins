@@ -1,21 +1,29 @@
 #!/bin/bash
 set -e
 
-echo "=== Dummy Uninstaller Script ==="
-echo "This script should remove all components installed by install.sh."
+echo "=== Jenkins Settings Uninstaller Script ==="
 
-# Example steps (replace with real commands):
-# 1. Stop services
-#    sudo systemctl stop tool.service
-#    sudo systemctl disable tool.service
+# 1) Remove Jenkins user from docker group
+if id -nG jenkins 2>/dev/null | grep -qw "docker"; then
+  echo "➡ Removing Jenkins user from docker group..."
+  sudo gpasswd -d jenkins docker || true
+  echo "✅ Jenkins user removed from docker group"
+else
+  echo "⏭ Jenkins user was not in docker group"
+fi
 
-# 2. Remove system packages
-#    sudo apt remove --purge -y <package>
+# 2) Remove GitHub credentials from /etc/environment
+echo "➡ Removing GitHub credentials from /etc/environment..."
+sudo sed -i '/GITHUB_TOKEN=/d' /etc/environment
+sudo sed -i '/GITHUB_ADMIN_USER=/d' /etc/environment
+sudo sed -i '/GITHUB_ORG=/d' /etc/environment
+echo "✅ GitHub credentials removed"
 
-# 3. Clean environment variables
-#    sudo sed -i '/TOOL_HOME=/d' /etc/environment
+# 3) Reload environment and restart Jenkins
+echo "➡ Reloading environment..."
+source /etc/environment || true
 
-# 4. Delete files and directories
-#    sudo rm -rf /opt/tool
+echo "➡ Restarting Jenkins to apply changes..."
+sudo systemctl restart jenkins || true
 
-echo "✅ Uninstallation complete (dummy run)"
+echo "🎯 Jenkins settings uninstall process finished!"
