@@ -3,6 +3,8 @@ set -e
 
 echo "=== Jenkins + faasd + Docker Installer (Dependency Check Mode) ==="
 
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+
 # 1) Verify Java 17 JDK
 if ! java -version 2>&1 | grep -q "17"; then
   echo "❌ Java 17 JDK not found. Please install OpenJDK 17 before running this installer."
@@ -39,7 +41,12 @@ fi
 echo "➡ Adding Jenkins user to docker group..."
 sudo usermod -aG docker jenkins || true
 
-# 6) GitHub credentials setup (from JSON/XML file)
+
+# 6) for credential parsing
+echo "➡ for credential parsing..."
+sudo apt install jq xmlstarlet -y
+
+# 7) GitHub credentials setup (from JSON/XML file)
 CRED_FILE=${GITHUB_CRED_FILE:-"./github-creds.json"}   # default to JSON file
 if [[ -f "$CRED_FILE" ]]; then
     echo "➡ Reading GitHub credentials from $CRED_FILE..."
@@ -68,28 +75,21 @@ if [[ -f "$CRED_FILE" ]]; then
     echo "GITHUB_ADMIN_USER=${GITHUB_ADMIN_USER_INPUT}" | sudo tee -a /etc/environment >/dev/null
     echo "GITHUB_ORG=${GITHUB_ORG_INPUT}" | sudo tee -a /etc/environment >/dev/null
 
-    echo "➡ Reloading environment..."
-    source /etc/environment || true
-
-    echo "➡ Restarting Jenkins to apply new environment variables..."
-    sudo systemctl restart jenkins
-    echo "✅ Jenkins restarted and environment variables applied"
-
-    # 7) Deploy Jenkins credentials.xml from separate file
+    # 8) Deploy Jenkins credentials.xml from separate file
     CRED_FILE_SRC="$SCRIPT_DIR/credentials.xml"
     CRED_FILE_DST="/var/lib/jenkins/credentials.xml"
+    sed "s|\${GITHUB_ADMIN_USER}|$GITHUB_ADMIN_USER_INPUT|g; s|\${GITHUB_TOKEN}|$GITHUB_TOKEN_INPUT|g" "$CRED_FILE_SRC" | sudo tee "$CRED_FILE_DST" >/dev/null
     
     if [ -f "$CRED_FILE_SRC" ]; then
       echo "➡ Deploying Jenkins credentials.xml"
       sudo cp "$CRED_FILE_SRC" "$CRED_FILE_DST"
       sudo chown jenkins:jenkins "$CRED_FILE_DST"
-      sudo systemctl restart jenkins
       echo "✅ Jenkins credentials deployed"
     else
       echo "⏭ Skipping credentials deployment (file not found)"
     fi
     
-    # 8) Deploy Organization Folder config.xml from separate file
+    # 9) Deploy Organization Folder config.xml from separate file
     ORG_JOB_DIR="/var/lib/jenkins/jobs/${GITHUB_ORG}-org"
     ORG_JOB_FILE="$ORG_JOB_DIR/config.xml"
     ORG_FILE_SRC="$SCRIPT_DIR/org-folder-config.xml"
@@ -99,11 +99,17 @@ if [[ -f "$CRED_FILE" ]]; then
       sudo mkdir -p "$ORG_JOB_DIR"
       sudo cp "$ORG_FILE_SRC" "$ORG_JOB_FILE"
       sudo chown -R jenkins:jenkins "$ORG_JOB_DIR"
-      sudo systemctl restart jenkins
       echo "✅ Organization Folder job created at $ORG_JOB_DIR"
     else
       echo "⏭ Skipping Organization Folder deployment (file not found)"
     fi
+
+    echo "➡ Reloading environment..."
+    source /etc/environment || true
+
+    echo "➡ Restarting Jenkins to apply new environment variables..."
+    sudo systemctl restart jenkins
+    echo "✅ Jenkins restarted and environment variables applied"
     
 else
     echo "⏭ Skipping GitHub credential and pipeline setup (no credential file found)"
