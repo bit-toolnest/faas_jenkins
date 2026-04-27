@@ -39,21 +39,25 @@ fi
 echo "➡ Adding Jenkins user to docker group..."
 sudo usermod -aG docker jenkins || true
 
-# 6) Optional GitHub credentials setup
-echo ""
-echo "➡ Do you want to configure GitHub credentials for branch protection automation? (yes/no)"
-read -r ADD_GITHUB_CREDS
+# 6) GitHub credentials setup (from JSON/XML file)
+CRED_FILE=${GITHUB_CRED_FILE:-"./github-creds.json"}   # default to JSON file
+if [[ -f "$CRED_FILE" ]]; then
+    echo "➡ Reading GitHub credentials from $CRED_FILE..."
 
-if [[ "$ADD_GITHUB_CREDS" == "yes" || "$ADD_GITHUB_CREDS" == "y" ]]; then
-    echo ""
-    echo "➡ Enter GitHub Personal Access Token:"
-    read -r GITHUB_TOKEN_INPUT
-
-    echo "➡ Enter GitHub Admin Username:"
-    read -r GITHUB_ADMIN_USER_INPUT
-
-    echo "➡ Enter GitHub Organization Name:"
-    read -r GITHUB_ORG_INPUT
+    if [[ "$CRED_FILE" == *.json ]]; then
+        # Requires jq
+        GITHUB_TOKEN_INPUT=$(jq -r '.token' "$CRED_FILE")
+        GITHUB_ADMIN_USER_INPUT=$(jq -r '.admin_user' "$CRED_FILE")
+        GITHUB_ORG_INPUT=$(jq -r '.org' "$CRED_FILE")
+    elif [[ "$CRED_FILE" == *.xml ]]; then
+        # Requires xmlstarlet
+        GITHUB_TOKEN_INPUT=$(xmlstarlet sel -t -v "//credentials/token" "$CRED_FILE")
+        GITHUB_ADMIN_USER_INPUT=$(xmlstarlet sel -t -v "//credentials/admin_user" "$CRED_FILE")
+        GITHUB_ORG_INPUT=$(xmlstarlet sel -t -v "//credentials/org" "$CRED_FILE")
+    else
+        echo "❌ Unsupported credential file format: $CRED_FILE"
+        exit 1
+    fi
 
     echo "➡ Writing environment variables to /etc/environment..."
     sudo sed -i '/GITHUB_TOKEN=/d' /etc/environment
@@ -71,7 +75,7 @@ if [[ "$ADD_GITHUB_CREDS" == "yes" || "$ADD_GITHUB_CREDS" == "y" ]]; then
     sudo systemctl restart jenkins
     echo "✅ Jenkins restarted and environment variables applied"
 else
-    echo "⏭ Skipping GitHub credential setup as per user choice"
+    echo "⏭ Skipping GitHub credential setup (no credential file found)"
 fi
 
 echo "🎯 Installer finished successfully (all dependencies verified)"
