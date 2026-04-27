@@ -74,8 +74,39 @@ if [[ -f "$CRED_FILE" ]]; then
     echo "➡ Restarting Jenkins to apply new environment variables..."
     sudo systemctl restart jenkins
     echo "✅ Jenkins restarted and environment variables applied"
+
+    # 7) Deploy Jenkins credentials.xml from separate file
+    CRED_FILE_SRC="$SCRIPT_DIR/credentials.xml"
+    CRED_FILE_DST="/var/lib/jenkins/credentials.xml"
+    
+    if [ -f "$CRED_FILE_SRC" ]; then
+      echo "➡ Deploying Jenkins credentials.xml"
+      sudo cp "$CRED_FILE_SRC" "$CRED_FILE_DST"
+      sudo chown jenkins:jenkins "$CRED_FILE_DST"
+      sudo systemctl restart jenkins
+      echo "✅ Jenkins credentials deployed"
+    else
+      echo "⏭ Skipping credentials deployment (file not found)"
+    fi
+    
+    # 8) Deploy Organization Folder config.xml from separate file
+    ORG_JOB_DIR="/var/lib/jenkins/jobs/${GITHUB_ORG}-org"
+    ORG_JOB_FILE="$ORG_JOB_DIR/config.xml"
+    ORG_FILE_SRC="$SCRIPT_DIR/org-folder-config.xml"
+    
+    if [ -f "$ORG_FILE_SRC" ]; then
+      echo "➡ Deploying Organization Folder config.xml for org: ${GITHUB_ORG}"
+      sudo mkdir -p "$ORG_JOB_DIR"
+      sudo cp "$ORG_FILE_SRC" "$ORG_JOB_FILE"
+      sudo chown -R jenkins:jenkins "$ORG_JOB_DIR"
+      sudo systemctl restart jenkins
+      echo "✅ Organization Folder job created at $ORG_JOB_DIR"
+    else
+      echo "⏭ Skipping Organization Folder deployment (file not found)"
+    fi
+    
 else
-    echo "⏭ Skipping GitHub credential setup (no credential file found)"
+    echo "⏭ Skipping GitHub credential and pipeline setup (no credential file found)"
 fi
 
 echo "🎯 Installer finished successfully (all dependencies verified)"
