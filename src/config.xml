@@ -1,0 +1,39 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<com.cloudbees.hudson.plugins.folder.Folder plugin="cloudbees-folder">
+  <actions/>
+  <description>Scans all repos in GitHub org and builds Jenkinsfiles</description>
+  <properties/>
+  <folderViews class="jenkins.branch.OrganizationFolderViewHolder"/>
+  <healthMetrics/>
+  <icon class="com.cloudbees.hudson.plugins.folder.icons.StockFolderIcon"/>
+  <views/>
+  <primaryView>All</primaryView>
+  <sources>
+    <jenkins.branch.OrganizationFolder plugin="branch-api">
+      <navigators>
+        <org.jenkinsci.plugins.github_branch_source.GitHubSCMNavigator plugin="github-branch-source">
+          <apiUri></apiUri>
+          <credentialsId>github-creds</credentialsId>
+          <repoOwner>${GITHUB_ORG}</repoOwner>
+          <traits>
+            <org.jenkinsci.plugins.github_branch_source.BranchDiscoveryTrait>
+              <strategyId>3</strategyId>
+            </org.jenkinsci.plugins.github_branch_source.BranchDiscoveryTrait>
+            <org.jenkinsci.plugins.github_branch_source.OriginPullRequestDiscoveryTrait>
+              <strategyId>1</strategyId>
+            </org.jenkinsci.plugins.github_branch_source.OriginPullRequestDiscoveryTrait>
+            <org.jenkinsci.plugins.github_branch_source.ForkPullRequestDiscoveryTrait>
+              <strategyId>1</strategyId>
+              <trust class="org.jenkinsci.plugins.github_branch_source.ForkPullRequestDiscoveryTrait$TrustPermission"/>
+            </org.jenkinsci.plugins.github_branch_source.ForkPullRequestDiscoveryTrait>
+          </traits>
+        </org.jenkinsci.plugins.github_branch_source.GitHubSCMNavigator>
+      </navigators>
+      <projectFactories>
+        <org.jenkinsci.plugins.workflow.multibranch.WorkflowBranchProjectFactory plugin="workflow-multibranch">
+          <scriptPath>Jenkinsfile</scriptPath>
+        </org.jenkinsci.plugins.workflow.multibranch.WorkflowBranchProjectFactory>
+      </projectFactories>
+    </jenkins.branch.OrganizationFolder>
+  </sources>
+</com.cloudbees.hudson.plugins.folder.Folder>
