@@ -90,12 +90,12 @@ if [[ -f "$CRED_FILE" ]]; then
   fi
 
   # --- 9) Deploy Organization Folder org-folder-config.xml ---
-  ORG_JOB_DIR="/var/lib/jenkins/jobs/${GITHUB_ORG}-org"
-  ORG_JOB_FILE="$ORG_JOB_DIR/org-folder-config.xml"
+  ORG_JOB_DIR="/var/lib/jenkins/jobs/${GITHUB_ORG_INPUT}-org"
+  ORG_JOB_FILE="$ORG_JOB_DIR/config.xml"
   ORG_FILE_SRC="$SCRIPT_DIR/org-folder-config.xml"
 
   if [ -f "$ORG_FILE_SRC" ]; then
-    echo "➡ Deploying Organization Folder config.xml for org: ${GITHUB_ORG}"
+    echo "➡ Deploying Organization Folder config.xml for org: ${GITHUB_ORG_INPUT}"
     sudo mkdir -p "$ORG_JOB_DIR"
     sudo cp "$ORG_FILE_SRC" "$ORG_JOB_FILE"
     sudo chown -R jenkins:jenkins "$ORG_JOB_DIR"
