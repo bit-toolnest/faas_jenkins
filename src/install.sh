@@ -89,9 +89,9 @@ if [[ -f "$CRED_FILE" ]]; then
     echo "⏭ Skipping credentials deployment (file not found)"
   fi
 
-  # --- 9) Deploy Organization Folder config.xml ---
+  # --- 9) Deploy Organization Folder org-folder-config.xml ---
   ORG_JOB_DIR="/var/lib/jenkins/jobs/${GITHUB_ORG}-org"
-  ORG_JOB_FILE="$ORG_JOB_DIR/config.xml"
+  ORG_JOB_FILE="$ORG_JOB_DIR/org-folder-config.xml"
   ORG_FILE_SRC="$SCRIPT_DIR/org-folder-config.xml"
 
   if [ -f "$ORG_FILE_SRC" ]; then
