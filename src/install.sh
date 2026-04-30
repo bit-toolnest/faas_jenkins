@@ -97,7 +97,8 @@ if [[ -f "$CRED_FILE" ]]; then
   if [ -f "$ORG_FILE_SRC" ]; then
     echo "➡ Deploying Organization Folder config.xml for org: ${GITHUB_ORG_INPUT}"
     sudo mkdir -p "$ORG_JOB_DIR"
-    sudo cp "$ORG_FILE_SRC" "$ORG_JOB_FILE"
+    sed "s|\${GITHUB_ORG}|$GITHUB_ORG_INPUT|g; s|\${CREDENTIALS_ID}|github-creds|g" \
+      "$ORG_FILE_SRC" | sudo tee "$ORG_JOB_FILE" >/dev/null
     sudo chown -R jenkins:jenkins "$ORG_JOB_DIR"
     echo "✅ Organization Folder job created at $ORG_JOB_DIR"
   else
