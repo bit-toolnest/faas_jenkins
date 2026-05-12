@@ -19,11 +19,20 @@ sudo sed -i '/GITHUB_ADMIN_USER=/d' /etc/environment
 sudo sed -i '/GITHUB_ORG=/d' /etc/environment
 echo "✅ GitHub credentials removed"
 
-# 3) Reload environment and restart Jenkins
-echo "➡ Reloading environment..."
-source /etc/environment || true
+# 3) Uninstall Jenkins
+# Stop and disable Jenkins
+sudo systemctl stop jenkins
+sudo systemctl disable jenkins
 
-echo "➡ Restarting Jenkins to apply changes..."
-sudo systemctl restart jenkins || true
+# Remove Jenkins package
+sudo apt purge jenkins -y
+
+# Clean up leftover directories
+sudo rm -rf /var/lib/jenkins /etc/jenkins /var/log/jenkins
+
+# Final cleanup
+sudo apt autoremove -y
+sudo apt clean
+
 
 echo "🎯 Jenkins settings uninstall process finished!"
