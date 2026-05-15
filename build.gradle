@@ -56,6 +56,15 @@ task install(dependsOn: installDeps) {
     }
 }
 
+task add_job {
+    doLast {
+        println "Installing current tool..."
+        exec {
+            commandLine "bash", "src/add-job.sh"
+        }
+    }
+}
+
 // -------------------- UNINSTALL --------------------
 task uninstallCurrent {
     doLast {
