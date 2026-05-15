@@ -4,6 +4,17 @@ set -euo pipefail
 echo "=== Jenkins + faasd + Docker Installer (CI/CD Safe Mode) ==="
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+# --- Centralized Variables ---
+JENKINSFILE_PATH_INPUT="Jenkinsfile"
+
+CRED_FILE=${GITHUB_CRED_FILE:-"$SCRIPT_DIR/github-creds.json"}
+CRED_FILE_SRC="$SCRIPT_DIR/credentials.xml"
+CRED_FILE_DST="/var/lib/jenkins/credentials.xml"
+
+CREDENTIALS_ID="github-creds"
+
+ORG_FILE_SRC="$SCRIPT_DIR/default-config.xml"
+# ORG_JOB_DIR and ORG_JOB_FILE will be defined later after parsing GITHUB_ORG_INPUT
 
 # --- Helper Functions ---
 check_cmd() {
@@ -58,7 +69,6 @@ install_pkg jq
 install_pkg xmlstarlet
 
 # --- 7) GitHub credentials setup ---
-CRED_FILE=${GITHUB_CRED_FILE:-"$SCRIPT_DIR/github-creds.json"}
 if [[ -f "$CRED_FILE" ]]; then
   echo "➡ Reading GitHub credentials from $CRED_FILE..."
 
@@ -76,10 +86,11 @@ if [[ -f "$CRED_FILE" ]]; then
     exit 1
   fi
 
-  # --- 8) Deploy Jenkins credentials.xml ---
-  CRED_FILE_SRC="$SCRIPT_DIR/credentials.xml"
-  CRED_FILE_DST="/var/lib/jenkins/credentials.xml"
+  ORG_JOB_DIR="/var/lib/jenkins/jobs/${GITHUB_ORG_INPUT}-org"
+  ORG_JOB_FILE="$ORG_JOB_DIR/config.xml"
 
+
+  # --- 8) Deploy Jenkins credentials.xml ---
   if [ -f "$CRED_FILE_SRC" ]; then
     echo "➡ Deploying Jenkins credentials.xml"
     sed "s|\${GITHUB_USER}|$GITHUB_USER_INPUT|g; \
@@ -92,37 +103,32 @@ if [[ -f "$CRED_FILE" ]]; then
   fi
 
   echo "➡ Restarting Jenkins to apply new configuration..."
-  sudo systemctl restart jenkins
-  echo "✅ Jenkins restarted"
+  if sudo systemctl restart jenkins; then
+    echo "✅ Jenkins restarted"
+  else
+    echo "❌ Jenkins restart failed, continuing anyway"
+  fi
 else
   echo "⏭ Skipping GitHub credential and pipeline setup (no credential file found)"
 fi
 
 # --- 9) Deploy Organization Folder org-folder-config.xml ---
-ORG_JOB_DIR="/var/lib/jenkins/jobs/${GITHUB_ORG_INPUT}-org"
-ORG_JOB_FILE="$ORG_JOB_DIR/config.xml"
-ORG_FILE_SRC="$SCRIPT_DIR/default-config.xml"
-JENKINSFILE_PATH_INPUT="Jenkinsfile"
-
 # Create org-folder only if it doesn't exist
-if [ ! -d "$ORG_JOB_DIR" ]; then
-  echo "➡ Creating Organization Folder job for org: ${GITHUB_ORG_INPUT}"
+echo "➡ Creating Organization Folder job for org: ${GITHUB_ORG_INPUT}"
 
-  if [ -f "$ORG_FILE_SRC" ]; then
-    echo "➡ Deploying Organization Folder config.xml for org: ${GITHUB_ORG_INPUT}"
-    sudo mkdir -p "$ORG_JOB_DIR"
-    sed "s|\${GITHUB_ORG}|${GITHUB_ORG_INPUT}|g; \
-        s|\${CREDENTIALS_ID}|github-creds|g; \
-        s|\${JENKINSFILE_PATH}|${JENKINSFILE_PATH_INPUT}|g" \
-        "$ORG_FILE_SRC" | sudo tee "$ORG_JOB_FILE" >/dev/null
-    sudo chown -R jenkins:jenkins "$ORG_JOB_DIR"
-    echo "✅ Organization Folder job created at $ORG_JOB_DIR"
-  else
-    echo "⏭ Skipping Organization Folder deployment (file not found)"
-  fi
+if [ -f "$ORG_FILE_SRC" ]; then
+  echo "➡ Deploying Organization Folder config.xml for org: ${GITHUB_ORG_INPUT}"
+  sudo mkdir -p "$ORG_JOB_DIR"
+  sed "s|\${GITHUB_ORG}|${GITHUB_ORG_INPUT}|g; \
+      s|\${CREDENTIALS_ID}|${CREDENTIALS_ID}|g; \
+      s|\${JENKINSFILE_PATH}|${JENKINSFILE_PATH_INPUT}|g" \
+      "$ORG_FILE_SRC" | sudo tee "$ORG_JOB_FILE" >/dev/null
+  sudo chown -R jenkins:jenkins "$ORG_JOB_DIR"
+  echo "✅ Organization Folder job created at $ORG_JOB_DIR"
 else
-  echo "⏭ Organization Folder job already exists, skipping"
+  echo "⏭ Skipping Organization Folder deployment (file not found)"
 fi
+
 
 
 echo "🎯 Installer finished successfully (CI/CD safe, all dependencies verified)"
