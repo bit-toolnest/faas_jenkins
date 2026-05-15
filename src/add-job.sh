@@ -71,14 +71,13 @@ sed "s|\${GITHUB_ORG}|$GITHUB_ORG_INPUT|g; \
 
 sudo chown jenkins:jenkins "$DSL_TARGET"
 
-
 cat > "$SEED_JOB_XML" <<EOF
 <project>
   <actions/>
   <description>Seed job to run Job DSL</description>
   <builders>
     <javaposse.jobdsl.plugin.ExecuteDslScripts>
-      <targets>/var/lib/jenkins/dsl/jobs.groovy</targets>
+      <targets>${DSL_TARGET}</targets>
       <usingScriptText>false</usingScriptText>
       <ignoreExisting>false</ignoreExisting>
       <removedJobAction>DELETE</removedJobAction>
