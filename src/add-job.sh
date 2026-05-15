@@ -19,9 +19,10 @@ fi
 
 # --- Jenkins CLI auth ---
 CRED_FILE=${GITHUB_CRED_FILE:-"$SCRIPT_DIR/user-creds.json"}
+GITHUB_ORG_INPUT=$(jq -r '.github_org // empty' "$CRED_FILE")
+# Read Jenkins values
 JENKINS_USER_INPUT=$(jq -r '.jenkins_user // empty' "$CRED_FILE")
 JENKINS_TOKEN_INPUT=$(jq -r '.jenkins_token // empty' "$CRED_FILE")
-GITHUB_ORG_INPUT=$(jq -r '.org // empty' "$CRED_FILE")
 
 if [[ -n "$JENKINS_USER_INPUT" && -n "$JENKINS_TOKEN_INPUT" ]]; then
   JENKINS_USER="$JENKINS_USER_INPUT"
