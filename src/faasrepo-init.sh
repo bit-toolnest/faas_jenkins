@@ -41,10 +41,19 @@ if [ -f ".jenkins/first-run.flag" ]; then
     git commit -m "Remove first-run flag after branch protection setup" || true
 fi
 
+# Step 3: Ensure gradlew is executable
+if [ -f "gradlew" ]; then
+    echo "➡ Setting executable permission on gradlew..."
+    chmod +x gradlew
+    echo "✅ gradlew is now executable"
+else
+    echo "⏭ gradlew not found, skipping permission update"
+fi
+
 # Push changes
 git push https://${ADMIN_USER}:${GITHUB_TOKEN}@github.com/${ORG}/${REPO}.git HEAD:main || true
 
-# Step 3: Apply branch protection
+# Step 4: Apply branch protection
 curl -X PUT \
   -H "Authorization: token $GITHUB_TOKEN" \
   -H "Accept: application/vnd.github+json" \
