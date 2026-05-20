@@ -6,13 +6,14 @@ echo "=== Jenkins + faasd + Docker Installer (CI/CD Safe Mode) ==="
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 # --- Centralized Variables ---
 JENKINSFILE_PATH_INPUT="Jenkinsfile"
-CRED_FILE=${GITHUB_CRED_FILE:-"$SCRIPT_DIR/github-creds.json"}
-CRED_FILE_SRC="$SCRIPT_DIR/credentials.xml"
+
+CRED_FILE=${GITHUB_CRED_FILE:-"$SCRIPT_DIR/creds/github-creds.json"}
+CRED_FILE_SRC="$SCRIPT_DIR/creds/credentials.xml"
 CRED_FILE_DST="/var/lib/jenkins/credentials.xml"
+
 CREDENTIALS_ID="github-creds"
-ORG_FILE_SRC="$SCRIPT_DIR/default-config.xml"
-BRANCH_PROTECTION_SRC="$SCRIPT_DIR/faasrepo-init.sh"
-BRANCH_PROTECTION_DST="/opt/scripts/faasrepo-init.sh"
+
+ORG_FILE_SRC="$SCRIPT_DIR/jobs/default-config.xml"
 # ORG_JOB_DIR and ORG_JOB_FILE will be defined later after parsing GITHUB_ORG_INPUT
 
 # --- Helper Functions ---
@@ -80,7 +81,7 @@ if [[ -f "$CRED_FILE" ]]; then
   GITHUB_USER_INPUT=$(jq -r '.github_user // empty' "$CRED_FILE")
   GITHUB_ORG_INPUT=$(jq -r '.github_org // empty' "$CRED_FILE")
 
-  if [[ -z "$GITHUB_TOKEN_INPUT" || -z "$GITHUB_USER_INPUT" ]]; then
+  if [[ -z "$GITHUB_TOKEN_INPUT" || -z "$GITHUB_USER_INPUT" || -z "$GITHUB_ORG_INPUT" ]]; then
     echo "❌ Missing GitHub credentials in $CRED_FILE"
     exit 1
   fi
@@ -101,12 +102,6 @@ if [[ -f "$CRED_FILE" ]]; then
     echo "⏭ Skipping credentials deployment (file not found)"
   fi
 
-  echo "➡ Restarting Jenkins to apply new configuration..."
-  if sudo systemctl restart jenkins; then
-    echo "✅ Jenkins restarted"
-  else
-    echo "❌ Jenkins restart failed, continuing anyway"
-  fi
 else
   echo "⏭ Skipping GitHub credential and pipeline setup (no credential file found)"
 fi
@@ -128,20 +123,34 @@ else
   echo "⏭ Skipping Organization Folder deployment (file not found)"
 fi
 
-# --- 10) Deploy faasrepo-init.sh ---
-echo "➡ Deploying faasrepo-init.sh to Jenkins scripts directory..."
+# --- 11) Deploy repo_init scripts ---
+echo "➡ Deploying repo_init scripts to /opt/scripts/ ..."
 
-if [ -f "$BRANCH_PROTECTION_SRC" ]; then
-  sudo mkdir -p "$(dirname "$BRANCH_PROTECTION_DST")"
-  sudo cp "$BRANCH_PROTECTION_SRC" "$BRANCH_PROTECTION_DST"
-  sudo chmod +x "$BRANCH_PROTECTION_DST"
-  sudo chown jenkins:jenkins "$BRANCH_PROTECTION_DST"
-  echo "✅ faasrepo-init.sh deployed at $BRANCH_PROTECTION_DST"
+REPO_INIT_DIR="$SCRIPT_DIR/repo_init"
+TARGET_DIR="/opt/scripts"
+
+sudo mkdir -p "$TARGET_DIR"
+
+for script in branch-protection.sh remove-flag.sh update-stack.sh; do
+  if [ -f "$REPO_INIT_DIR/$script" ]; then
+    sudo cp "$REPO_INIT_DIR/$script" "$TARGET_DIR/$script"
+    sudo chmod +x "$TARGET_DIR/$script"
+    sudo chown jenkins:jenkins "$TARGET_DIR/$script"
+    echo "   ✔ $script deployed"
+  else
+    echo "   ⏭ $script not found, skipping"
+  fi
+done
+
+if [ -f "$REPO_INIT_DIR/branch-protection-rule.json" ]; then
+  sudo cp "$REPO_INIT_DIR/branch-protection-rule.json" "$TARGET_DIR/branch-protection-rule.json"
+  sudo chown jenkins:jenkins "$TARGET_DIR/branch-protection-rule.json"
+  echo "   ✔ branch-protection-rule.json deployed"
 else
-  echo "⏭ Skipping faasrepo-init.sh deployment (file not found)"
+  echo "   ⏭ branch-protection-rule.json not found, skipping"
 fi
 
-
-
+echo "➡ Restarting Jenkins to apply new configuration..."
+sudo systemctl restart jenkins
 
 echo "🎯 Installer finished successfully (CI/CD safe, all dependencies verified)"
